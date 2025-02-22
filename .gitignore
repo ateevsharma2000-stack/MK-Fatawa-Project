@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual env
+.venv/
+env/
+
+# Data outputs (optional)
+data/text/
+data/json/
+
+# OS-specific
+.DS_Store
+Thumbs.db
