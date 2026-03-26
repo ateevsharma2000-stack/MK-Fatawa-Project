@@ -6,10 +6,26 @@ __pycache__/
 .venv/
 env/
 
-# Data outputs (optional)
+# Data outputs
 data/text/
+data/text_clean/
 data/json/
+data/pdf/
+data/ocr_corrections.csv
+data/embed_checkpoint.json
+
+# LLM output
+vision_model_output.txt
+
+# Environment
+.env
+.env.local
 
 # OS-specific
 .DS_Store
 Thumbs.db
+
+# Next.js
+web/node_modules/
+web/.next/
+web/.env.local

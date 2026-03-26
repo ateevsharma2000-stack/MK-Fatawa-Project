@@ -1,0 +1,30 @@
+original,corrected,context_pattern
+Islarn,Islam,
+Islan,Islam,\bIslan\b
+Allan,Allah,\bAllan\b
+Qneness,Oneness,
+Gmnipotence,Omnipotence,
+sameone,someone,
+samething,something,
+linquistic,linguistic,
+Scholatly,Scholarly,
+Scholafly,Scholarly,
+thevGeneral,the General,
+qenerallPresidency,General Presidency,
+TaghOt,Taghut,
+Agidah,Aqidah,
+Aqgidah,Aqidah,
+Tavwhid,Tawhid,
+Muharnmad,Muhammad,
+Muharimad,Muhammad,
+Muharnimad,Muhammad,
+Muharmmad,Muhammad,
+hirn,him,\bhirn\b
+fangels,angels,
+fruithul,fruitful,
+Thorugh,Through,
+aur,our,\baur\b
+vWho,Who,\bvWho\b
+quide,guide,
+chasen,chosen,
+areligion,a religion,
