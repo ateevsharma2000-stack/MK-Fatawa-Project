@@ -25,6 +25,8 @@ NOISE_PATTERNS = [
     re.compile(r"^.*Schola[ft]ly.*Research and Ifta", re.IGNORECASE),
     re.compile(r"^[.\s]*of Scholarly.*Research and Ifta", re.IGNORECASE),
     re.compile(r"^The General Presidency of Scholarly Research and Ifta.*All Rights Reserved\.\s*$"),
+    re.compile(r"^neral Presidency\s*$", re.IGNORECASE),
+    re.compile(r"^of Scholarly.*R[ée]search and Ifta", re.IGNORECASE),
     re.compile(r"^Udi\s*-\s*$"),
     re.compile(r"^~\s*[a-z]?\s*$"),
     re.compile(r"^5\s*[''].* ;\s*i\s*$"),
@@ -32,6 +34,11 @@ NOISE_PATTERNS = [
     re.compile(r"^(iG|@@)\s*Print this page.*$"),
     re.compile(r"^a eagle Fatwa-Online\.com\s*$"),
     re.compile(r"^SCHOLARS BIOGRAPHIES.*$"),
+    # Standalone junk characters (OCR artifacts)
+    re.compile(r"^[@U;]\s*$"),
+    re.compile(r"^ij\s*f?\s*$"),
+    re.compile(r"^0\}\s*$"),
+    re.compile(r"^['\"]?[Ay]\s*$"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -55,7 +62,7 @@ SALUTATION_PATTERN = re.compile(
 # Rule 3: Symbol corrections
 # ---------------------------------------------------------------------------
 def apply_symbol_fixes(line):
-    """Fix OCR symbol corruptions: ¢→(, €→(, ¥→V, etc."""
+    """Fix OCR symbol corruptions: ¢→(, €→(, ¥→V, }, {, etc."""
     corrections = []
 
     # ¥ followed by uppercase letter → V + letter (e.g. ¥irtue → Virtue)
@@ -88,6 +95,24 @@ def apply_symbol_fixes(line):
         corrections.append(("symbol_fix", line.strip(), new.strip()))
         line = new
 
+    # } used as ) — closing parenthesis confusion
+    new = re.sub(r"}", ")", line)
+    if new != line:
+        corrections.append(("bracket_fix", line.strip(), new.strip()))
+        line = new
+
+    # { used as ( — opening parenthesis confusion
+    new = re.sub(r"\{", "(", line)
+    if new != line:
+        corrections.append(("bracket_fix", line.strip(), new.strip()))
+        line = new
+
+    # C before specific words where OCR misread ( as C — e.g. Cturmoil) → (turmoil)
+    new = re.sub(r"\bC(turmoil|in religion|disbelief|polytheism|shirk)\b", r"(\1", line)
+    if new != line:
+        corrections.append(("bracket_fix", line.strip(), new.strip()))
+        line = new
+
     return line, corrections
 
 # ---------------------------------------------------------------------------
@@ -97,17 +122,22 @@ def load_word_corrections(csv_path):
     """Load word correction rules from CSV file."""
     rules = []
     with open(csv_path, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            original = row["original"].strip()
-            corrected = row["corrected"].strip()
-            context = row.get("context_pattern", "").strip()
-            if context:
-                pattern = re.compile(context)
-            else:
-                # Default: match the word with word boundaries
-                pattern = re.compile(re.escape(original))
-            rules.append((original, corrected, pattern))
+        # Filter out comment lines starting with #
+        lines = [line for line in f if not line.strip().startswith("#")]
+    import io
+    reader = csv.DictReader(io.StringIO("".join(lines)))
+    for row in reader:
+        original = row["original"].strip()
+        corrected = row["corrected"].strip()
+        if not original:
+            continue
+        context = row.get("context_pattern", "").strip()
+        if context:
+            pattern = re.compile(context)
+        else:
+            # Default: match the word with word boundaries
+            pattern = re.compile(re.escape(original))
+        rules.append((original, corrected, pattern))
     return rules
 
 
@@ -141,6 +171,68 @@ def apply_question_fixes(line):
     return line, corrections
 
 # ---------------------------------------------------------------------------
+# Rule 6: Parenthesis misread as f or t — e.g. "fauthentic)" → "(authentic)"
+# ---------------------------------------------------------------------------
+# Pattern: f or t immediately before a word, followed later by a closing )
+PAREN_AS_F_PATTERN = re.compile(r"\b[ft](authentic|ablution|one|two|three|four|five|obligatory|voluntary|recommended|forbidden|permissible|weak|disbelief|polytheism|shirk|turmoil|in religion)\)")
+PAREN_AS_T_PATTERN = re.compile(r"\b[ft](authentic|ablution|one|two|three|four|five|obligatory|voluntary|recommended|forbidden|permissible|weak|disbelief|polytheism|shirk|turmoil|in religion)\)")
+
+def apply_paren_fixes(line):
+    """Fix ( misread as f or t before known words."""
+    corrections = []
+    new = PAREN_AS_F_PATTERN.sub(r"(\1)", line)
+    if new != line:
+        corrections.append(("paren_fix", line.strip(), new.strip()))
+        line = new
+    return line, corrections
+
+# ---------------------------------------------------------------------------
+# Rule 7: Digit/letter swaps — 4→A at start of words, Tf→If
+# ---------------------------------------------------------------------------
+DIGIT_LETTER_FIXES = [
+    # 4 at start of word → A (e.g. 4s → As, 4l-Bukhari → Al-Bukhari)
+    (re.compile(r"\b4([ls])(\b|-)"), r"A\1\2"),
+    (re.compile(r"\b4llah\b"), "Allah"),
+    # Tf at start of sentence → If
+    (re.compile(r"(?:^|\.\s+)Tf\b"), lambda m: m.group().replace("Tf", "If")),
+]
+
+def apply_digit_letter_fixes(line):
+    corrections = []
+    for pattern, replacement in DIGIT_LETTER_FIXES:
+        new = pattern.sub(replacement, line)
+        if new != line:
+            corrections.append(("digit_letter_fix", line.strip(), new.strip()))
+            line = new
+    return line, corrections
+
+# ---------------------------------------------------------------------------
+# Rule 8: Scholar name garble — "ATIPy", "ATPy", "Atity", "AFiPy", "Afity" → 'Afifi
+# ---------------------------------------------------------------------------
+AFIFI_PATTERN = re.compile(r'"?(A[Tf][Ii]?[Pp]?[Yy]|AFiPy|Afity|ATIPy|ATPy|Atity)\b')
+
+def apply_scholar_fixes(line):
+    corrections = []
+    new = AFIFI_PATTERN.sub("'Afifi", line)
+    if new != line:
+        corrections.append(("scholar_name_fix", line.strip(), new.strip()))
+        line = new
+    return line, corrections
+
+# ---------------------------------------------------------------------------
+# Rule 9: "This ts file" → "This is file" (common OCR in noor collection headers)
+# ---------------------------------------------------------------------------
+THIS_TS_PATTERN = re.compile(r"\bThis ts\b")
+
+def apply_this_ts_fix(line):
+    corrections = []
+    new = THIS_TS_PATTERN.sub("This is", line)
+    if new != line:
+        corrections.append(("word_correction", line.strip(), new.strip()))
+        line = new
+    return line, corrections
+
+# ---------------------------------------------------------------------------
 # Main processing
 # ---------------------------------------------------------------------------
 def clean_line(line, word_rules):
@@ -160,16 +252,32 @@ def clean_line(line, word_rules):
             all_corrections.append(("arabic_salutation", line.strip(), new_line.strip()))
             line = new_line
 
-    # Rule 3: Symbol fixes
-    line, corrs = apply_symbol_fixes(line)
+    # Rule 3: Word corrections (before symbol fixes so {ommittee→Committee runs first)
+    line, corrs = apply_word_corrections(line, word_rules)
     all_corrections.extend(corrs)
 
-    # Rule 4: Word corrections
-    line, corrs = apply_word_corrections(line, word_rules)
+    # Rule 4: Symbol fixes
+    line, corrs = apply_symbol_fixes(line)
     all_corrections.extend(corrs)
 
     # Rule 5: Question markers
     line, corrs = apply_question_fixes(line)
+    all_corrections.extend(corrs)
+
+    # Rule 6: Parenthesis misread as f/t
+    line, corrs = apply_paren_fixes(line)
+    all_corrections.extend(corrs)
+
+    # Rule 7: Digit/letter swaps (4→A, Tf→If)
+    line, corrs = apply_digit_letter_fixes(line)
+    all_corrections.extend(corrs)
+
+    # Rule 8: Scholar name garble → 'Afifi
+    line, corrs = apply_scholar_fixes(line)
+    all_corrections.extend(corrs)
+
+    # Rule 9: "This ts" → "This is"
+    line, corrs = apply_this_ts_fix(line)
     all_corrections.extend(corrs)
 
     return line, all_corrections

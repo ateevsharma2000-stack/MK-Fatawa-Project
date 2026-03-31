@@ -1,5 +1,94 @@
 original,corrected,context_pattern
+# --- rn/m confusion (most common OCR error class) ---
+farnily,family,
 Islarn,Islam,
+Muharnmad,Muhammad,
+Muharimad,Muhammad,
+Muharnimad,Muhammad,
+Muharmmad,Muhammad,
+Muharnrnad,Muhammad,
+Ibrahirn,Ibrahim,\bIbrahirn\b
+hirn,him,\bhirn\b
+thern,them,\bthern\b
+frorn,from,\bfrorn\b
+forrn,form,\bforrn\b
+forrns,forms,\bforrns\b
+sarne,same,\bsarne\b
+narne,name,\bnarne\b
+narned,named,\bnarned\b
+irnages,images,\birnages\b
+irnage,image,\birnage\b
+irnarn,imam,\birnarn\b
+Hararn,Haram,\bHararn\b
+Islarmically,Islamically,
+tirne,time,\btirne\b
+wornen,women,\bwornen\b
+corne,come,\bcorne\b
+horne,home,\bhorne\b
+sorne,some,\bsorne\b
+becorne,become,\bbecorne\b
+welcorne,welcome,\bwelcorne\b
+rnarriage,marriage,\brnarriage\b
+rnention,mention,\brnention\b
+rnentioned,mentioned,\brnentioned\b
+rneans,means,\brneans\b
+rnay,may,\brnay\b
+rnade,made,\brnade\b
+rnake,make,\brnake\b
+rnakes,makes,\brnakes\b
+rnatter,matter,\brnatter\b
+rnatters,matters,\brnatters\b
+rnust,must,\brnust\b
+rnoney,money,\brnoney\b
+rnore,more,\brnore\b
+rnorning,morning,\brnorning\b
+rnonth,month,\brnonth\b
+rnonths,months,\brnonths\b
+comrnand,command,\bcomrnand\b
+comrnanded,commanded,\bcomrnanded\b
+comrnit,commit,\bcomrnit\b
+cornpanion,companion,\bcornpanion\b
+cornpanions,companions,\bcornpanions\b
+# --- a/o confusion ---
+quardian,guardian,
+lawtul,lawful,
+opinian,opinion,
+prastrating,prostrating,
+worshiptul,worshipful,
+beautitul,beautiful,
+peacetul,peaceful,
+powertul,powerful,
+gratetul,grateful,
+sinceretul,sincereful,
+unlawtul,unlawful,
+mercitul,merciful,
+reconciliatian,reconciliation,
+befare,before,\bbefare\b
+daing,doing,\bdaing\b
+remaving,removing,\bremaving\b
+# --- a/o single-letter words (need word boundary) ---
+af,of,\baf\b
+ta,to,\bta\b
+wha,who,\bwha\b
+wno,who,\bwno\b
+# --- 4/A and digit-letter confusion ---
+4llah,Allah,\b4llah\b
+2akah,Zakah,\b2akah\b
+# --- N/W confusion ---
+Wo.,No.,\bFatwa Wo\.
+# --- l/I confusion ---
+lbn,Ibn,\blbn\b
+lbraaheem,Ibraaheem,\blbraaheem\b
+# --- f/t as ( confusion (parenthesis misread) ---
+# Handled in script as regex rules, not word corrections
+# --- Joined words ---
+Itis,It is,\bItis\b
+Ifthe,If the,\bIfthe\b
+ithas,it has,\bithas\b
+areligion,a religion,
+# --- Scholar name garble ---
+# Handled as regex in script
+# --- General misspellings ---
 Islan,Islam,\bIslan\b
 Allan,Allah,\bAllan\b
 Qneness,Oneness,
@@ -15,11 +104,6 @@ TaghOt,Taghut,
 Agidah,Aqidah,
 Aqgidah,Aqidah,
 Tavwhid,Tawhid,
-Muharnmad,Muhammad,
-Muharimad,Muhammad,
-Muharnimad,Muhammad,
-Muharmmad,Muhammad,
-hirn,him,\bhirn\b
 fangels,angels,
 fruithul,fruitful,
 Thorugh,Through,
@@ -27,4 +111,15 @@ aur,our,\baur\b
 vWho,Who,\bvWho\b
 quide,guide,
 chasen,chosen,
-areligion,a religion,
+wite,wife,\bwite\b
+oeace,peace,\boeace\b
+religous,religious,
+Minsitry,Ministry,
+Minsiters,Ministers,
+sayS,says,\bsayS\b
+saysS,says,\bsaysS\b
+disbelieverss,disbelievers,
+Nawédfil,Nawafil,
+Taqwé,Taqwa,
+{ommittee,Committee,
+EditionIntroduction,Edition Introduction,
