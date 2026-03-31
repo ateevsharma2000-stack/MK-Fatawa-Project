@@ -343,9 +343,9 @@ def upload_to_supabase(chunks: list[Chunk], embeddings: list[list[float]], batch
         batch_chunks = chunks[i:i + batch_size]
         batch_embeddings = embeddings[i:i + batch_size]
 
-        rows = []
+        rows = {}
         for chunk, embedding in zip(batch_chunks, batch_embeddings):
-            rows.append({
+            rows[chunk.chunk_id] = {
                 "id": chunk.chunk_id,
                 "collection": chunk.collection,
                 "volume": chunk.volume,
@@ -356,9 +356,9 @@ def upload_to_supabase(chunks: list[Chunk], embeddings: list[list[float]], batch
                 "content": chunk.text[:10000],  # limit content size
                 "token_count": chunk.token_count,
                 "embedding": embedding,
-            })
+            }
 
-        client.table("fatawa_chunks").upsert(rows).execute()
+        client.table("fatawa_chunks").upsert(list(rows.values())).execute()
         print(f"  Uploaded batch {i // batch_size + 1} ({len(batch_chunks)} rows)")
 
 
