@@ -9,6 +9,8 @@ Usage:
   python3 scripts/embed_pipeline.py --dry-run     # chunk only, no API calls
 """
 
+from __future__ import annotations
+
 import os
 import re
 import json
@@ -92,8 +94,15 @@ def count_tokens(text: str) -> int:
 # ---------------------------------------------------------------------------
 # Chunking strategies
 # ---------------------------------------------------------------------------
-FATWA_MARKER = re.compile(r"^Fatwa\s+[Nn]o\.?\s*[({]?\s*\d+", re.IGNORECASE)
-QUESTION_MARKER = re.compile(r"^Q\d*:")
+# Match both "Fatwa no. XXXX" and "The Xth question of Fatwa no. XXXX"
+# Also tolerate OCR noise in fatwa numbers ($, #, *, +, ¥, ?, O for 0)
+FATWA_MARKER = re.compile(
+    r"^(The\s+\w+\s+question\s+(of|from)\s+)?Fatwa\s+[Nn]o\.?\s*[\s({[\$#*+¥?]*\s*[O0-9]",
+    re.IGNORECASE,
+)
+# Match Q:, Q1:, A:, and OCR variants O:, Q., Q 265:
+QUESTION_MARKER = re.compile(r"^[QO]\s*\d*\s*[:.]")
+ANSWER_MARKER = re.compile(r"^A:")
 
 
 def chunk_iftaa(text: str, filename: str, collection: str, volume: int) -> list[Chunk]:
@@ -222,7 +231,7 @@ def chunk_noor(text: str, filename: str, collection: str, volume: int) -> list[C
 
 
 def chunk_ibn_bazz(text: str, filename: str, collection: str, volume: int) -> list[Chunk]:
-    """Chunk Ibn Bazz by page markers with max size splitting."""
+    """Chunk Ibn Bazz by Q: markers first, then page markers with max size."""
     lines = text.split("\n")
     chunks = []
     current_lines = []
@@ -230,6 +239,48 @@ def chunk_ibn_bazz(text: str, filename: str, collection: str, volume: int) -> li
     current_page_start = 0
     current_page_end = 0
     chunk_idx = 0
+    q_count = 0
+
+    def flush_chunk(title: str):
+        nonlocal chunk_idx, current_page_start
+        chunk_text = "\n".join(current_lines).strip()
+        if chunk_text and count_tokens(chunk_text) >= 30:
+            # Split oversized chunks at ~800 tokens
+            tokens = count_tokens(chunk_text)
+            if tokens > 1200:
+                words = chunk_text.split()
+                step = int(800 * 0.75)  # ~800 tokens in words
+                for i in range(0, len(words), step):
+                    sub = " ".join(words[i : i + step])
+                    if count_tokens(sub) >= 30:
+                        chunks.append(Chunk(
+                            chunk_id=f"{collection}_v{volume:02d}_c{chunk_idx:04d}",
+                            collection=collection,
+                            volume=volume,
+                            part_no=current_part,
+                            page_no_start=current_page_start,
+                            page_no_end=current_page_end,
+                            section_title=title,
+                            text=sub,
+                            token_count=count_tokens(sub),
+                        ))
+                        chunk_idx += 1
+            else:
+                chunks.append(Chunk(
+                    chunk_id=f"{collection}_v{volume:02d}_c{chunk_idx:04d}",
+                    collection=collection,
+                    volume=volume,
+                    part_no=current_part,
+                    page_no_start=current_page_start,
+                    page_no_end=current_page_end,
+                    section_title=title,
+                    text=chunk_text,
+                    token_count=tokens,
+                ))
+                chunk_idx += 1
+        current_page_start = current_page_end
+
+    current_title = "Introduction"
 
     for line in lines:
         page = parse_page_marker(line)
@@ -238,46 +289,29 @@ def chunk_ibn_bazz(text: str, filename: str, collection: str, volume: int) -> li
             if current_page_start == 0:
                 current_page_start = pg
             current_page_end = pg
-
-            # Check if we should split
-            current_text = "\n".join(current_lines).strip()
-            if count_tokens(current_text) >= 1200:
-                if current_text:
-                    chunks.append(Chunk(
-                        chunk_id=f"{collection}_v{volume:02d}_c{chunk_idx:04d}",
-                        collection=collection,
-                        volume=volume,
-                        part_no=current_part,
-                        page_no_start=current_page_start,
-                        page_no_end=current_page_end,
-                        section_title=f"Part {current_part}, Pages {current_page_start}-{current_page_end}",
-                        text=current_text,
-                        token_count=count_tokens(current_text),
-                    ))
-                    chunk_idx += 1
-                    current_lines = []
-                    current_page_start = pg
-
             if is_page_marker_line(line):
                 continue
 
+        stripped = line.strip()
+        # Split on Q: markers (question boundaries)
+        if QUESTION_MARKER.match(stripped):
+            flush_chunk(current_title)
+            current_lines = [line]
+            q_count += 1
+            current_title = f"Question {q_count}"
+            continue
+
+        # Also split on page markers if chunk is getting large
+        if page and count_tokens("\n".join(current_lines).strip()) >= 800:
+            flush_chunk(current_title)
+            current_lines = []
+            current_title = f"Part {current_part}, Pages {current_page_start}-{current_page_end}"
+            continue
+
         current_lines.append(line)
 
-    # Last chunk
-    chunk_text = "\n".join(current_lines).strip()
-    if chunk_text and count_tokens(chunk_text) >= 30:
-        chunks.append(Chunk(
-            chunk_id=f"{collection}_v{volume:02d}_c{chunk_idx:04d}",
-            collection=collection,
-            volume=volume,
-            part_no=current_part,
-            page_no_start=current_page_start,
-            page_no_end=current_page_end,
-            section_title=f"Part {current_part}, Pages {current_page_start}-{current_page_end}",
-            text=chunk_text,
-            token_count=count_tokens(chunk_text),
-        ))
-
+    # Final chunk
+    flush_chunk(current_title)
     return chunks
 
 

@@ -71,6 +71,22 @@ af,of,\baf\b
 ta,to,\bta\b
 wha,who,\bwha\b
 wno,who,\bwno\b
+na,no,\bna\b
+fram,from,\bfram\b
+wornan,woman,\bwornan\b
+sate,safe,\bsate\b
+rust,must,\brust\b
+nares,names,\bnares\b
+doubttul,doubtful,
+companians,companions,
+companians,Companions,\bCompanians\b
+Résearch,Research,
+Monotheisn,Monotheism,
+ig,is,\big\b
+hin,him,\bhin\b
+Wwe,We,\bWwe\b
+Wie,We,\bWie\b
+lett,left,\blett\b
 # --- 4/A and digit-letter confusion ---
 4llah,Allah,\b4llah\b
 2akah,Zakah,\b2akah\b

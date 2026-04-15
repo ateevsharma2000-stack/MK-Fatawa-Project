@@ -158,6 +158,14 @@ def apply_word_corrections(line, word_rules):
 QUESTION_MARKER_FIXES = [
     (re.compile(r"^QO:"), "Q:"),
     (re.compile(r"^0\s*(\d):"), r"Q\1:"),
+    # Standalone 0: at line start → Q:
+    (re.compile(r"^0:"), "Q:"),
+    # O: at line start (letter O misread as Q) → Q:
+    (re.compile(r"^O:"), "Q:"),
+    # 4: at line start → A: (answer marker)
+    (re.compile(r"^4:"), "A:"),
+    # Q. (period instead of colon) → Q:
+    (re.compile(r"^Q\.(\s)"), r"Q:\1"),
 ]
 
 
@@ -233,6 +241,35 @@ def apply_this_ts_fix(line):
     return line, corrections
 
 # ---------------------------------------------------------------------------
+# Rule 10: Degree symbol ° used as apostrophe → '
+# ---------------------------------------------------------------------------
+def apply_degree_fix(line):
+    corrections = []
+    new = re.sub(r"°", "'", line)
+    if new != line:
+        corrections.append(("symbol_fix", line.strip(), new.strip()))
+        line = new
+    return line, corrections
+
+# ---------------------------------------------------------------------------
+# Rule 11: Scholar name prefix garble — AbduU-, AbduIF-, AbdUF-, AlF- etc.
+# ---------------------------------------------------------------------------
+ABDUL_GARBLE = re.compile(r"\bAbdu[UIlF]{1,3}-", re.IGNORECASE)
+ALF_GARBLE = re.compile(r"\bAlF-")
+
+def apply_abdul_fixes(line):
+    corrections = []
+    new = ABDUL_GARBLE.sub("Abdul-", line)
+    if new != line:
+        corrections.append(("scholar_name_fix", line.strip(), new.strip()))
+        line = new
+    new = ALF_GARBLE.sub("Al-", line)
+    if new != line:
+        corrections.append(("scholar_name_fix", line.strip(), new.strip()))
+        line = new
+    return line, corrections
+
+# ---------------------------------------------------------------------------
 # Main processing
 # ---------------------------------------------------------------------------
 def clean_line(line, word_rules):
@@ -278,6 +315,14 @@ def clean_line(line, word_rules):
 
     # Rule 9: "This ts" → "This is"
     line, corrs = apply_this_ts_fix(line)
+    all_corrections.extend(corrs)
+
+    # Rule 10: Degree symbol ° → '
+    line, corrs = apply_degree_fix(line)
+    all_corrections.extend(corrs)
+
+    # Rule 11: Scholar name prefix garble (AbduU-, AlF-)
+    line, corrs = apply_abdul_fixes(line)
     all_corrections.extend(corrs)
 
     return line, all_corrections
